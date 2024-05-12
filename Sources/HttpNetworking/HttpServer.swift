@@ -2,18 +2,36 @@ import Foundation
 
 public protocol HttpServer: Sendable {
     associatedtype Namepsace: HttpNamespace
+    
+    @discardableResult
     func request<Body, Response>(
         _ keyPath: KeyPath<Namepsace, some HttpRequest<Body, Response>>,
         body: Body
     ) async throws -> Response
+    
+    @discardableResult
+    func request<Response>(
+        _ keyPath: KeyPath<Namepsace, some HttpRequest<Empty, Response>>
+    ) async throws -> Response
+    
+    func request<Body>(
+        _ keyPath: KeyPath<Namepsace, some HttpRequest<Body, Empty>>,
+        body: Body
+    ) async throws
+    
+    func request(
+        _ keyPath: KeyPath<Namepsace, some HttpRequest<Empty, Empty>>
+    ) async throws
 }
 
-final class HttpServerOf<N: HttpNamespace>: HttpServer {
+public final class HttpServerOf<N: HttpNamespace>: HttpServer {
     private let jsonDecoder = JSONDecoder()
     private let namespace = N()
     
+    public init() {}
+    
     @discardableResult
-    func request<Body, Response>(
+    public func request<Body, Response>(
         _ keyPath: KeyPath<N, some HttpRequest<Body, Response>>,
         body: Body
     ) async throws -> Response {
@@ -24,7 +42,7 @@ final class HttpServerOf<N: HttpNamespace>: HttpServer {
     }
     
     @discardableResult
-    func request<Response>(
+    public func request<Response>(
         _ keyPath: KeyPath<N, some HttpRequest<Empty, Response>>
     ) async throws -> Response {
         let httpRequest = namespace[keyPath: keyPath]
@@ -33,7 +51,7 @@ final class HttpServerOf<N: HttpNamespace>: HttpServer {
         return try jsonDecoder.decode(Response.self, from: result.0)
     }
     
-    func request<Body>(
+    public func request<Body>(
         _ keyPath: KeyPath<N, some HttpRequest<Body, Empty>>,
         body: Body
     ) async throws {
@@ -42,7 +60,7 @@ final class HttpServerOf<N: HttpNamespace>: HttpServer {
         let _ = try await URLSession.shared.data(for: urlRequest)
     }
     
-    func request(
+    public func request(
         _ keyPath: KeyPath<N, some HttpRequest<Empty, Empty>>
     ) async throws {
         let httpRequest = namespace[keyPath: keyPath]
